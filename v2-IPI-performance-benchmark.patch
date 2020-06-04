@@ -1,0 +1,401 @@
+From patchwork Tue Dec 19 08:50:10 2017
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-Patchwork-Submitter: Yury Norov <ynorov@caviumnetworks.com>
+X-Patchwork-Id: 10122703
+Return-Path: <kvm-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org (pdx-wl-mail.web.codeaurora.org
+	[172.30.200.125])
+	by pdx-korg-patchwork.web.codeaurora.org (Postfix) with ESMTP id
+	B355B603B5 for <patchwork-kvm@patchwork.kernel.org>;
+	Tue, 19 Dec 2017 08:50:53 +0000 (UTC)
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A2A961FF3E
+	for <patchwork-kvm@patchwork.kernel.org>;
+	Tue, 19 Dec 2017 08:50:53 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+	id 95B8F28A8F; Tue, 19 Dec 2017 08:50:53 +0000 (UTC)
+X-Spam-Checker-Version: SpamAssassin 3.3.1 (2010-03-16) on
+	pdx-wl-mail.web.codeaurora.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-6.9 required=2.0 tests=BAYES_00,DKIM_SIGNED,
+	DKIM_VALID,RCVD_IN_DNSWL_HI autolearn=unavailable version=3.3.1
+Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
+	by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C89F51FF3E
+	for <patchwork-kvm@patchwork.kernel.org>;
+	Tue, 19 Dec 2017 08:50:52 +0000 (UTC)
+Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
+	id S936995AbdLSIu2 (ORCPT
+	<rfc822;patchwork-kvm@patchwork.kernel.org>);
+	Tue, 19 Dec 2017 03:50:28 -0500
+Received: from mail-co1nam03on0064.outbound.protection.outlook.com
+	([104.47.40.64]:8230
+	"EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S936960AbdLSIuZ (ORCPT <rfc822;kvm@vger.kernel.org>);
+	Tue, 19 Dec 2017 03:50:25 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+	d=CAVIUMNETWORKS.onmicrosoft.com; s=selector1-cavium-com;
+	h=From:Date:Subject:Message-ID:Content-Type:MIME-Version;
+	bh=nqvkEUpHuopXV8SntjoMutJ5T7frvwhnGSpEOh/DScY=;
+	b=P/Kp1A3IJal+1ecF08fPiEgIDPG/8JaXN45uj5IUYiAt5doLKwmIaJC1+ADwShhMdYpySc5vfbxYPjLXWZc3iL9ZXrYpK98VcasSSm8/CrU9L2GoJM0949b4VyVBQx1QdL+zSm/8gxXOFJe+AjjvePh/ID0XyPqFbA3YSerOC9U=
+Authentication-Results: spf=none (sender IP is )
+	smtp.mailfrom=Yuri.Norov@cavium.com;
+Received: from localhost (115.113.156.2) by
+	SN4PR0701MB3839.namprd07.prod.outlook.com (2603:10b6:803:4f::14) with
+	Microsoft SMTP Server (version=TLS1_2,
+	cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384_P256) id 15.20.323.15;
+	Tue, 19 Dec 2017 08:50:22 +0000
+From: Yury Norov <ynorov@caviumnetworks.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
+	linux-arm-kernel@lists.infradead.org
+Cc: Yury Norov <ynorov@caviumnetworks.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Ashish Kalra <Ashish.Kalra@cavium.com>,
+	Christoffer Dall <christoffer.dall@linaro.org>,
+	Geert Uytterhoeven <geert@linux-m68k.org>,
+	Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+	Linu Cherian <Linu.Cherian@cavium.com>,
+	Shih-Wei Li <shihwei@cs.columbia.edu>,
+	Sunil Goutham <Sunil.Goutham@cavium.com>
+Subject: [PATCH v2] IPI performance benchmark
+Date: Tue, 19 Dec 2017 11:50:10 +0300
+Message-Id: <20171219085010.4081-1-ynorov@caviumnetworks.com>
+X-Mailer: git-send-email 2.11.0
+MIME-Version: 1.0
+X-Originating-IP: [115.113.156.2]
+X-ClientProxiedBy: DB3PR0202CA0036.eurprd02.prod.outlook.com
+	(2603:10a6:8:1::49) To SN4PR0701MB3839.namprd07.prod.outlook.com
+	(2603:10b6:803:4f::14)
+X-MS-PublicTrafficType: Email
+X-MS-Office365-Filtering-Correlation-Id: abcafd4b-d2d3-4222-a7d0-08d546bd8ae1
+X-Microsoft-Antispam: UriScan:; BCL:0; PCL:0;
+	RULEID:(5600026)(4604075)(4534020)(4602075)(7168020)(4627115)(201703031133081)(201702281549075)(2017052603307);
+	SRVR:SN4PR0701MB3839;
+X-Microsoft-Exchange-Diagnostics: 1; SN4PR0701MB3839;
+	3:5++7x99Vk++jN08J5IyMtC4SI4O7ZE2ZcsY4dpEa4TWgVTnG75ucGasr1OoHRPpoqRlXXoC2XQ/nxWihWUGRTZxwhnTkSvZqvOFQcSMo10Rr3Yjzoy1oKv1Cc2hjMubcOCvPoEKzBsO6XtEC10na+kqoxRlBM1Sz9XV1SpMAQHICdUQ+3ms+7NPwn01a8l3nJ207RzOtW2a0KQhMGna9kS/Y8gbbkL2W2P6DFGsJgW57BqePZn2BTZE4NRk5a/uN;
+	25:s+A1cZ/4Xsgc+4vtVKYnzhOyiLmzC0ikIlkTFaFESyYz9gNYOz40t5MzWHu4rfWOnsCV5H0VZshvO/exR/OZwh/NcS6H4W0xHFcktSLt9RdgtB8ys4yqti3lCF9j8DNE2d5Kv3LCuM2BXiJoKD4Y83fI9WpolVRcW6xccP+8sEM+VCp3pFgXC4NV6prCY7Xa2NK016NhAwzU20tX1hFjTUlIn5ho+dbERlPWK56V8Rt2Ze1i1RmSgfXPah4vl2mg8cdx/SxZlrAMRg4zW4/c44aVd4AO/Dho7W/mutAMpQdhcw8Zmh3HTbM1TUDZwwIyxLoC7P4XDMnxshsKQnhk0g==;
+	31:J+xwO889WYN2f1y562mBNXX5XfvVcBaeqHEWqHPbauWlcYXLNrsKFJjWuCrFWFdX2PZbhCQpDX7jce2Hy89MJxzYbQR8c7cZuFWXX+MzKXZw1FSml/6jz+xEOyopqQc7vw9rtDhJkbYvN0PqU+FEeoudguy29WWuVDv/zY9agvB2lAHDmhEbck/gx1DRHXUMNcY38s2TsfADyn13njZrK6ERAOGTC3wghEPcrlqn39M=
+X-MS-TrafficTypeDiagnostic: SN4PR0701MB3839:
+X-Microsoft-Exchange-Diagnostics: 1; SN4PR0701MB3839;
+	20:wicOrgyMmxfwE5HKT+mUjZudw/9TDY0PcVeQaRfMJNK5XXTShVLXIX9lZZzdXB5Iv+XTlKvAckSY78Al6q8/aEqXYkGQPusJBGjOsooWGxNtwAWCILiMp1+gSAvNRYqGsV/GSBSb9P+s/u3DYCAK0faksAgsGFhMP7rFqD8id6XUe+9PznaFuKaHIgM9NEufGvH1doNfDthV8j0zsNXmkXPYgX7NqA8GD9Xu4tFEGp4UXvrf7Ghs/J5dM66J9YlrRfC/lqr9N9t1Um0HYHLwBoDyybcLRiLo2j0Mb5ytUK3wfMtOJ5Wyg/uOby96hC44A+D6O13WI/ZZl9o7XhgCVR424Nl4VYkDqR7S6SC32dN9pnZISsllHdKeEhajWx430eY8+zCUWmer/Jc6uTSfSiPlV1G+ce7gwdmg3gzKan5GsR+g+ny0g+t27twOjeP4UUXSg/9sTzcbCxGAPST3rLj+PV5pAHve8e55AhpiZwpjinOP+1QxsurxyzFj1QK4nMLd6vIkGpK2WzMYTMROl2N1UE8kPLZBilGkoWM7S/aX2/kIw5UCOVAfj2CtE3xy89+GZZ+MEXluqkrcK4HTLdgbxa1hAs6yK9Zf6yIy3xs=
+X-Microsoft-Antispam-PRVS: 
+ <SN4PR0701MB383972A0210A62DD62890902E30F0@SN4PR0701MB3839.namprd07.prod.outlook.com>
+X-Exchange-Antispam-Report-Test: 
+ UriScan:(209352067349851)(85170053105377)(146099531331640); 
+X-Exchange-Antispam-Report-CFA-Test: BCL:0; PCL:0;
+	RULEID:(6040450)(2401047)(5005006)(8121501046)(93006095)(10201501046)(3002001)(3231023)(6041248)(20161123560025)(20161123562025)(20161123558100)(20161123555025)(20161123564025)(201703131423075)(201702281528075)(201703061421075)(201703061406153)(6072148)(201708071742011);
+	SRVR:SN4PR0701MB3839; BCL:0; PCL:0;
+	RULEID:(100000803101)(100110400095); SRVR:SN4PR0701MB3839;
+X-Microsoft-Exchange-Diagnostics: 1; SN4PR0701MB3839;
+	4:nPvvvvPl+FKUn1LdnVww6tnfuvBdt4f8hic2uQpZm7zRYFOI8q8vEDLJuK5x1fH5XSK+BYwaiOjeUrIL9y3DCBWWEwqk09QmtFkXsv4bocCwxq0QjUY/hksBdy46iN929GdwdnhKbcXi0o+axShGl0X28blAsoO4GxcIaS2TlAw8csG4DW3DnAph058VZo0SuLruClbtv+iFIesca9jJdPnyh2R4L5JU5nnAe9xnh3UgeIwosy031ts4eQLNqjoSiwuLl5V7aLoCuA1IZXvMKpuGYwPmXhLPnI0ZxJ80uv9ImyTg41/hmjCQ990pP168h4ASG05zwkp86UkTMCMwO+3RAGvKe+RWSZc4FeuWtJR2Fr10VX99e34eZaL5DxAV
+X-Forefront-PRVS: 052670E5A4
+X-Forefront-Antispam-Report: SFV:NSPM;
+	SFS:(10009020)(6069001)(366004)(396003)(376002)(39860400002)(346002)(189003)(199004)(6496006)(5660300001)(8676002)(16526018)(42882006)(6666003)(316002)(386003)(55236004)(305945005)(7736002)(966005)(478600001)(51416003)(36756003)(52116002)(54906003)(2906002)(16586007)(59450400001)(8936002)(72206003)(6306002)(48376002)(50466002)(47776003)(68736007)(25786009)(105586002)(1076002)(76506005)(6116002)(3846002)(81156014)(97736004)(106356001)(81166006)(66066001)(107886003)(4326008)(53936002)(6486002)(50226002)(2004002);
+	DIR:OUT; SFP:1101; SCL:1; SRVR:SN4PR0701MB3839; H:localhost;
+	FPR:; SPF:None; PTR:InfoNoRecords; MX:1; A:1; LANG:en;
+Received-SPF: None (protection.outlook.com: cavium.com does not designate
+	permitted sender hosts)
+X-Microsoft-Exchange-Diagnostics: =?us-ascii?Q?1; SN4PR0701MB3839;
+	23:GSHj7WdORH78PqMX8aIy8zpm8onQPfjmQvtjTnt?=
+	=?us-ascii?Q?eIIj+CofJmh8SEk3PxNywoEynk9wWrODtOUsFPdo3mD221GT4SdbrjFQuPqh?=
+	=?us-ascii?Q?gshup8GlewtSCn0eJOWXlpzqdy0qva5dS/J0+NSKfunonMka+4QMa60iVqYt?=
+	=?us-ascii?Q?dwqYeX+QXP5WMbBrcgMS/IAhzPpf8Na127T6NdZk8AcXa9JwKlfiCbQFj/8I?=
+	=?us-ascii?Q?IimWgHL7lnCbdLbrmghvdxGiRF96lkanR3LUNEOgGr2jlN2jLXR/vWBmLX3R?=
+	=?us-ascii?Q?axkQ4ZthX2vU9lhJgVyXFMHynGv1MO8c2w6S2LY+kz1CLF6XYfVUtHHoXgBm?=
+	=?us-ascii?Q?DSnK+aXnkqZItf7eurOnVtWnWcPZGdud3FMVEfUwwnKbRNhEZzqBx1ziUtGL?=
+	=?us-ascii?Q?4BJd8FRtE6KgoVrZ4xLjr9O90rlsGNGXpAPEvTSQHUooGDt+WSS9fWRVp+5q?=
+	=?us-ascii?Q?cUW3xJIP3yUx9/tu+Ac6LtyvtQgUwON/R3Abx2b723XVr784JjaA1NrPPgKZ?=
+	=?us-ascii?Q?w660GiE8LtDNbLqoE0/fbJEEx0AiSvnZ0EQHfpbChvmyOQ2v3HJO9NJa/XEe?=
+	=?us-ascii?Q?65kUCWogXDt8CKB26/78D/VFzFr+El/dVMIPEAIDfMi8Cq0qKBDhaoszsjyx?=
+	=?us-ascii?Q?/MGx3r+Lx0YsJpZ8pZT9GPGxZNufhmCBA/Ol0Q3OIccrn4D0npk0RX9weLxf?=
+	=?us-ascii?Q?4PhqYTAhuWVrnya+HR9mxr2caBtWiUznxtclrEHHyyZE0CfOaEVrIDsxR9fE?=
+	=?us-ascii?Q?7zh+LvxHEmHYt7kMqd01wHt3hXd0tBpKqEDbm7+RdifTpr6/YfdPYhRuPC+p?=
+	=?us-ascii?Q?8gN7U0DLSEQ0PUhxqzNu/zLEB/ozGAI6u6+ThbpZ8zy9GR6fOIkijBqXApd5?=
+	=?us-ascii?Q?xgWXvPt6vCIi75wzAtNztH45XSRWCtZx0s2E7Me+3ia7v9JdSD4OZq7luwlZ?=
+	=?us-ascii?Q?gurFDTqHVMt7U5nMv3FANVzMf4UcjANUTNhbaA8p/1e+IKdp9d4lg42GqctH?=
+	=?us-ascii?Q?BBkw3XTqAv2iEuk0RXkSliFo5mEFTBgyE7qTkk10rmSBrYhacU5hqQVDnAFk?=
+	=?us-ascii?Q?cbcYnmoCAAcrFtVWAv6Il69UPHQ356mkDegRTLrlsfxEC9kOSm/2msj1xND/?=
+	=?us-ascii?Q?b80frSLNVHUAQpZMCGPxCsz55kLuUCnRMgp6laH1CRh91D1AreNGlbu2rJhh?=
+	=?us-ascii?Q?ugB9A619xkn8AER0=3D?=
+X-Microsoft-Exchange-Diagnostics: 1; SN4PR0701MB3839;
+	6:RaCeD7RimOW43fi7119FfOpqycd/Y7ogbGDjp4BWID0GTieW+S1fc87JgzkTx+tZxrdIjMBc0UYjHjNDhyicEJJLMXS+y1Z6E+swOzo6hRU7zsOrZDzQyHsBsNkylliI4k5afnirsyyi7flIqCtjEv9jFoa/8lkJ9IKBjDjgGlp3UY5n8NJix7BbXJ4lMG3cbOaLJG0v0Jj0x0/EHVDf5k6cUnklwYICE6UQNBGx3t42slNuBCcl1ixROQic3suslIWFWGRS/hld5ZJ2gBkvWeB54CzcEQYrEPgS0yKiLIBGKOXv988MEMWFoolRJ2x5VhtFlZpkmbL7gEZA9JsVZzoa3IaPn23mSVlHhWXTyPo=;
+	5:0wDQ7T6swaPl9uuMnJ5ZC1bXWZWl85UY3c0mTpr/CTLzEKTffL02Q8dw4FdNehR94767VjYlZTS0oOUDoMQrOMD+lxPHyr6osiXvx+X/n/AZ/qVQhWLdI4gLpsk/UIw4UlQludIV6NfLRXP8TIpcaCY4HNgxCjEQE6lCdTV10bs=;
+	24:E249NmrjVHDRKblWuiLxGuG4Ww7vf3tgDamWO26jxVjNrgwfZYkqVvAowQ3jIgYi+Z4fejiySafzaQal1Ap4Vj6UiHroiYgCGl4IiumCkow=;
+	7:wa6xjBPJ9UALyVq9rz6Aor7n2RcaaDwViRRIJ/YanICSZeNevWXnAuUQrxiTY2aEVN04Tmtp/3oxcJ0oWy9XvjEojn5D3XNl7JYqhLChkZhWPhoDMQaeDKunDFRV6K3LxIZ+BjH3Zd9zSRj7M/0IMgkXVqRrdoLcvgC61JhEUluKquuBRJY+pjGCzW9mvcIli4ANkUl4YabrRaW+a0F+PI9ZY2CtBIUIf1U/teaC2yxlYWNt0+GTDQCgvqv/ftA+
+SpamDiagnosticOutput: 1:99
+SpamDiagnosticMetadata: NSPM
+X-OriginatorOrg: caviumnetworks.com
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 19 Dec 2017 08:50:22.9350
+	(UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 
+ abcafd4b-d2d3-4222-a7d0-08d546bd8ae1
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 711e4ccf-2e9b-4bcf-a551-4094005b6194
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN4PR0701MB3839
+Sender: kvm-owner@vger.kernel.org
+Precedence: bulk
+List-ID: <kvm.vger.kernel.org>
+X-Mailing-List: kvm@vger.kernel.org
+X-Virus-Scanned: ClamAV using ClamSMTP
+
+This benchmark sends many IPIs in different modes and measures
+time for IPI delivery (first column), and total time, ie including
+time to acknowledge the receive by sender (second column).
+
+The scenarios are:
+Dry-run:	do everything except actually sending IPI. Useful
+		to estimate system overhead.
+Self-IPI:	Send IPI to self CPU.
+Normal IPI:	Send IPI to some other CPU.
+Broadcast IPI:	Send broadcast IPI to all online CPUs.
+Broadcast lock:	Send broadcast IPI to all online CPUs and force them
+                acquire/release spinlock.
+
+The raw output looks like this:
+[  155.363374] Dry-run:                         0,            2999696 ns
+[  155.429162] Self-IPI:                 30385328,           65589392 ns
+[  156.060821] Normal IPI:              566914128,          631453008 ns
+[  158.384427] Broadcast IPI:                   0,         2323368720 ns
+[  160.831850] Broadcast lock:                  0,         2447000544 ns
+
+For virtualized guests, sending and reveiving IPIs causes guest exit.
+I used this test to measure performance impact on KVM subsystem of
+Christoffer Dall's series "Optimize KVM/ARM for VHE systems" [1].
+
+Test machine is ThunderX2, 112 online CPUs. Below the results normalized
+to host dry-run time, broadcast lock results omitted. Smaller - better.
+
+Host, v4.14:
+Dry-run:	  0	    1
+Self-IPI:         9	   18
+Normal IPI:      81	  110
+Broadcast IPI:    0	 2106
+
+Guest, v4.14:
+Dry-run:          0	    1
+Self-IPI:        10	   18
+Normal IPI:     305	  525
+Broadcast IPI:    0    	 9729
+
+Guest, v4.14 + [1]:
+Dry-run:          0	    1
+Self-IPI:         9	   18
+Normal IPI:     176	  343
+Broadcast IPI:    0	 9885
+
+[1] https://www.spinics.net/lists/kvm/msg156755.html
+
+v2:
+  added broadcast lock test;
+  added example raw output in patch description;
+
+CC: Andrew Morton <akpm@linux-foundation.org>
+CC: Ashish Kalra <Ashish.Kalra@cavium.com>
+CC: Christoffer Dall <christoffer.dall@linaro.org>
+CC: Geert Uytterhoeven <geert@linux-m68k.org>
+CC: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+CC: Linu Cherian <Linu.Cherian@cavium.com>
+CC: Shih-Wei Li <shihwei@cs.columbia.edu>
+CC: Sunil Goutham <Sunil.Goutham@cavium.com>
+Signed-off-by: Yury Norov <ynorov@caviumnetworks.com>
+---
+ arch/Kconfig           |  10 ++++
+ kernel/Makefile        |   1 +
+ kernel/ipi_benchmark.c | 153 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 164 insertions(+)
+ create mode 100644 kernel/ipi_benchmark.c
+
+diff --git a/arch/Kconfig b/arch/Kconfig
+index 400b9e1b2f27..1b216eb15642 100644
+--- a/arch/Kconfig
++++ b/arch/Kconfig
+@@ -82,6 +82,16 @@ config JUMP_LABEL
+ 	 ( On 32-bit x86, the necessary options added to the compiler
+ 	   flags may increase the size of the kernel slightly. )
+ 
++config IPI_BENCHMARK
++	tristate "Test IPI performance on SMP systems"
++	depends on SMP
++	help
++	  Test IPI performance on SMP systems. If system has only one online
++	  CPU, sending IPI to other CPU is obviously not possible, and ENOENT
++	  is returned for corresponding test.
++
++	  If unsure, say N.
++
+ config STATIC_KEYS_SELFTEST
+ 	bool "Static key selftest"
+ 	depends on JUMP_LABEL
+diff --git a/kernel/Makefile b/kernel/Makefile
+index 172d151d429c..04e550e1990c 100644
+--- a/kernel/Makefile
++++ b/kernel/Makefile
+@@ -101,6 +101,7 @@ obj-$(CONFIG_TRACEPOINTS) += trace/
+ obj-$(CONFIG_IRQ_WORK) += irq_work.o
+ obj-$(CONFIG_CPU_PM) += cpu_pm.o
+ obj-$(CONFIG_BPF) += bpf/
++obj-$(CONFIG_IPI_BENCHMARK) += ipi_benchmark.o
+ 
+ obj-$(CONFIG_PERF_EVENTS) += events/
+ 
+diff --git a/kernel/ipi_benchmark.c b/kernel/ipi_benchmark.c
+new file mode 100644
+index 000000000000..1dfa15e5ef70
+--- /dev/null
++++ b/kernel/ipi_benchmark.c
+@@ -0,0 +1,153 @@
++/*
++ * Performance test for IPI on SMP machines.
++ *
++ * Copyright (c) 2017 Cavium Networks.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of version 2 of the GNU General Public
++ * License as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
++ * General Public License for more details.
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/ktime.h>
++
++#define NTIMES 100000
++
++#define POKE_ANY	0
++#define DRY_RUN		1
++#define POKE_SELF	2
++#define POKE_ALL	3
++#define POKE_ALL_LOCK	4
++
++static void __init handle_ipi_spinlock(void *t)
++{
++	spinlock_t *lock = (spinlock_t *) t;
++
++	spin_lock(lock);
++	spin_unlock(lock);
++}
++
++static void __init handle_ipi(void *t)
++{
++	ktime_t *time = (ktime_t *) t;
++
++	if (time)
++		*time = ktime_get() - *time;
++}
++
++static ktime_t __init send_ipi(int flags)
++{
++	ktime_t time = 0;
++	DEFINE_SPINLOCK(lock);
++	unsigned int cpu = get_cpu();
++
++	switch (flags) {
++	case DRY_RUN:
++		/* Do everything except actually sending IPI. */
++		break;
++	case POKE_ALL:
++		/* If broadcasting, don't force all CPUs to update time. */
++		smp_call_function_many(cpu_online_mask, handle_ipi, NULL, 1);
++		break;
++	case POKE_ALL_LOCK:
++		smp_call_function_many(cpu_online_mask,
++				handle_ipi_spinlock, &lock, 1);
++		break;
++	case POKE_ANY:
++		cpu = cpumask_any_but(cpu_online_mask, cpu);
++		if (cpu >= nr_cpu_ids) {
++			time = -ENOENT;
++			break;
++		}
++		/* Fall thru */
++	case POKE_SELF:
++		time = ktime_get();
++		smp_call_function_single(cpu, handle_ipi, &time, 1);
++		break;
++	default:
++		time = -EINVAL;
++	}
++
++	put_cpu();
++	return time;
++}
++
++static int __init __bench_ipi(unsigned long i, ktime_t *time, int flags)
++{
++	ktime_t t;
++
++	*time = 0;
++	while (i--) {
++		t = send_ipi(flags);
++		if ((int) t < 0)
++			return (int) t;
++
++		*time += t;
++	}
++
++	return 0;
++}
++
++static int __init bench_ipi(unsigned long times, int flags,
++				ktime_t *ipi, ktime_t *total)
++{
++	int ret;
++
++	*total = ktime_get();
++	ret = __bench_ipi(times, ipi, flags);
++	if (unlikely(ret))
++		return ret;
++
++	*total = ktime_get() - *total;
++
++	return 0;
++}
++
++static int __init init_bench_ipi(void)
++{
++	ktime_t ipi, total;
++	int ret;
++
++	ret = bench_ipi(NTIMES, DRY_RUN, &ipi, &total);
++	if (ret)
++		pr_err("Dry-run FAILED: %d\n", ret);
++	else
++		pr_err("Dry-run:        %18llu, %18llu ns\n", ipi, total);
++
++	ret = bench_ipi(NTIMES, POKE_SELF, &ipi, &total);
++	if (ret)
++		pr_err("Self-IPI FAILED: %d\n", ret);
++	else
++		pr_err("Self-IPI:       %18llu, %18llu ns\n", ipi, total);
++
++	ret = bench_ipi(NTIMES, POKE_ANY, &ipi, &total);
++	if (ret)
++		pr_err("Normal IPI FAILED: %d\n", ret);
++	else
++		pr_err("Normal IPI:     %18llu, %18llu ns\n", ipi, total);
++
++	ret = bench_ipi(NTIMES, POKE_ALL, &ipi, &total);
++	if (ret)
++		pr_err("Broadcast IPI FAILED: %d\n", ret);
++	else
++		pr_err("Broadcast IPI:  %18llu, %18llu ns\n", ipi, total);
++
++	ret = bench_ipi(NTIMES, POKE_ALL_LOCK, &ipi, &total);
++	if (ret)
++		pr_err("Broadcast lock FAILED: %d\n", ret);
++	else
++		pr_err("Broadcast lock: %18llu, %18llu ns\n", ipi, total);
++
++	/* Return error to avoid annoying rmmod. */
++	return -EINVAL;
++}
++module_init(init_bench_ipi);
++
++MODULE_LICENSE("GPL");
