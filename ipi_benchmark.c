@@ -107,6 +107,9 @@ static int __init bench_ipi(unsigned long times, int flags,
 
 	*total = ktime_get() - *total;
 
+    *ipi /= times;
+    *total /= times;
+
 	return 0;
 }
 
